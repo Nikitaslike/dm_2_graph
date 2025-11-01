@@ -1,4 +1,6 @@
 import itertools
+import networkx as nx
+import matplotlib.pyplot as plt
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QTextEdit
@@ -30,70 +32,74 @@ matrix_b = [
     [0,1,0,1,1,0,0,0,0,1]
 ]
 
-def analyze_graph(matrix, directed=False):
+def draw_graph(matrix, directed=False):
+    """Візуалізація графа за матрицею"""
+    G = nx.DiGraph() if directed else nx.Graph()
     n = len(matrix)
-    log("\n" + "="*60)
-    log(f"АНАЛІЗ {'ОРІЄНТОВАНОГО' if directed else 'НЕОРІЄНТОВАНОГО'} ГРАФА")
-    log("="*60)
+    G.add_nodes_from(range(1, n + 1))
+    for i in range(n):
+        for j in range(n):
+            if matrix[i][j]:
+                if directed or (j > i):
+                    G.add_edge(i + 1, j + 1)
 
-    # список ребер
+    plt.figure(figsize=(6, 6))
+    pos = nx.spring_layout(G, seed=42)
+    nx.draw_networkx(G, pos, with_labels=True, node_color="#ffd280",
+                     node_size=800, font_size=10, font_weight='bold',
+                     edgecolors="black")
+    title = "Орієнтований граф" if directed else "Неорієнтований граф"
+    plt.title(title)
+    plt.axis('off')
+    plt.show()
+
+
+def analyze_graph(matrix, directed=False, log=print):
+    """Аналіз графа"""
+    n = len(matrix)
+    log("\n" + "=" * 60)
+    log(f"АНАЛІЗ {'ОРІЄНТОВАНОГО' if directed else 'НЕОРІЄНТОВАНОГО'} ГРАФА")
+    log("=" * 60)
+
     edges = []
     for i in range(n):
         for j in range(n):
             if matrix[i][j]:
                 if directed or (j > i):
-                    edges.append((i+1, j+1))
+                    edges.append((i + 1, j + 1))
 
-    log(f"Вершини: {list(range(1, n+1))}")
+    log(f"Вершини: {list(range(1, n + 1))}")
     log(f"Кількість ребер: {len(edges)}")
     log(f"Ребра: {edges}")
 
-    # степені та околиці
     log("\nОколиці вершин:")
     for i in range(n):
-        neigh = [j+1 for j in range(n) if matrix[i][j] != 0]
+        neigh = [j + 1 for j in range(n) if matrix[i][j] != 0]
         degree = len(neigh)
-        log(f"Вершина {i+1}: околиця = {neigh}, степінь = {degree}")
+        log(f"Вершина {i + 1}: околиця = {neigh}, степінь = {degree}")
 
-    # ейлерів цикл (для неорієнтованого графа)
     if not directed:
         all_even = all(sum(row) % 2 == 0 for row in matrix)
-        if all_even:
-            log("\nЕйлерів цикл існує ✅")
-        else:
-            log("\nЕйлерового циклу немає ❌")
+        log("\nЕйлерів цикл існує ✅" if all_even else "\nЕйлерового циклу немає ❌")
 
-    # гамільтонів цикл
     def has_hamiltonian_cycle():
         for perm in itertools.permutations(range(n)):
-            valid = True
-            for i in range(n):
-                a, b = perm[i], perm[(i+1) % n]
-                if matrix[a][b] == 0:
-                    valid = False
-                    break
-            if valid:
-                return [p+1 for p in perm] + [perm[0]+1]
+            if all(matrix[perm[i]][perm[(i + 1) % n]] for i in range(n)):
+                return [p + 1 for p in perm] + [perm[0] + 1]
         return None
 
     hc = has_hamiltonian_cycle()
-    if hc:
-        log("Гамільтонів цикл знайдено: " + str(hc))
-    else:
-        log("Гамільтонового циклу не знайдено.")
+    log("Гамільтонів цикл знайдено: " + str(hc) if hc else "Гамільтонового циклу не знайдено.")
 
-    # пошук простих циклів (до 4 вершин)
     log("\nЦикли (до 4 вершин):")
     cycles = set()
     for a, b, c in itertools.permutations(range(n), 3):
         if matrix[a][b] and matrix[b][c] and matrix[c][a]:
-            cycles.add(tuple(sorted([a+1,b+1,c+1])))
+            cycles.add(tuple(sorted([a + 1, b + 1, c + 1])))
     for cyc in list(cycles)[:5]:
         log(str(cyc))
-    log("="*60)
+    log("=" * 60)
 
-
-# === 3. Код Прюфера ===
 
 def prufer_decode(code):
     m = len(code)
@@ -122,20 +128,12 @@ codes = {
     "d": [5,11,8,4,2,2,1,3,9,10,13]
 }
 
-# GUI
 
-# root = tk.Tk()
-# root.title("Аналіз графів та декодування кодів Прюфера")
-
-# text_output = scrolledtext.ScrolledText(root, width=100, height=30, wrap=tk.WORD)
-# text_output.grid(row=0, column=0, columnspan=3, padx=10, pady=10)
-
-
-# PyQt5 GUI
+# === PyQt5 GUI ===
 class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Аналіз графів та коди Прюфера")
+        self.setWindowTitle("Аналіз графів та коди Прюфера — Варіант №14")
         self.resize(900, 600)
         self.setup_ui()
 
@@ -143,109 +141,54 @@ class MainWindow(QWidget):
         layout = QVBoxLayout()
         self.text_output = QTextEdit()
         self.text_output.setReadOnly(True)
-        self.text_output.setLineWrapMode(QTextEdit.WidgetWidth)
         layout.addWidget(self.text_output)
 
-        button_layout = QHBoxLayout()
-        self.btn_a = QPushButton("Аналізувати граф A")
-        self.btn_b = QPushButton("Аналізувати граф B")
+        buttons = QHBoxLayout()
+        self.btn_a = QPushButton("Граф A (неорієнтований)")
+        self.btn_b = QPushButton("Граф B (орієнтований)")
         self.btn_prufer = QPushButton("Декодувати коди Прюфера")
-        button_layout.addWidget(self.btn_a)
-        button_layout.addWidget(self.btn_b)
-        button_layout.addWidget(self.btn_prufer)
-        layout.addLayout(button_layout)
-
+        buttons.addWidget(self.btn_a)
+        buttons.addWidget(self.btn_b)
+        buttons.addWidget(self.btn_prufer)
+        layout.addLayout(buttons)
         self.setLayout(layout)
 
-        self.btn_a.clicked.connect(self.analyze_a)
-        self.btn_b.clicked.connect(self.analyze_b)
-        self.btn_prufer.clicked.connect(self.decode_prufer)
+        self.btn_a.clicked.connect(self.show_a)
+        self.btn_b.clicked.connect(self.show_b)
+        self.btn_prufer.clicked.connect(self.show_prufer)
 
-    def log(self, msg):
-        self.text_output.append(msg)
-        self.text_output.verticalScrollBar().setValue(self.text_output.verticalScrollBar().maximum())
+    def log(self, text):
+        self.text_output.append(text)
+        self.text_output.verticalScrollBar().setValue(
+            self.text_output.verticalScrollBar().maximum()
+        )
 
-    def analyze_a(self):
+    def show_a(self):
         self.text_output.clear()
         analyze_graph(matrix_a, directed=False, log=self.log)
+        draw_graph(matrix_a, directed=False)
 
-    def analyze_b(self):
+    def show_b(self):
         self.text_output.clear()
         analyze_graph(matrix_b, directed=True, log=self.log)
+        draw_graph(matrix_b, directed=True)
 
-    def decode_prufer(self):
+    def show_prufer(self):
         self.text_output.clear()
-        self.log("\n\n=== ДЕКОДУВАННЯ КОДІВ ПРЮФЕРА ===")
+        self.log("=== ДЕКОДУВАННЯ КОДІВ ПРЮФЕРА ===\n")
         for name, code in codes.items():
             edges = prufer_decode(code)
-            self.log(f"{name}) Код Прюфера {code} -> ребра {edges}")
+            self.log(f"{name}) Код {code} → ребра {edges}")
+            G = nx.Graph()
+            G.add_edges_from(edges)
+            plt.figure(figsize=(5, 5))
+            nx.draw(G, with_labels=True, node_color="#b3ffb3",
+                    node_size=700, edgecolors="black", font_weight="bold")
+            plt.title(f"Граф з коду Прюфера {name}")
+            plt.axis('off')
+            plt.show()
 
 
-# Patch analyze_graph to accept log as argument
-def analyze_graph(matrix, directed=False, log=print):
-    n = len(matrix)
-    log("\n" + "="*60)
-    log(f"АНАЛІЗ {'ОРІЄНТОВАНОГО' if directed else 'НЕОРІЄНТОВАНОГО'} ГРАФА")
-    log("="*60)
-
-    # список ребер
-    edges = []
-    for i in range(n):
-        for j in range(n):
-            if matrix[i][j]:
-                if directed or (j > i):
-                    edges.append((i+1, j+1))
-
-    log(f"Вершини: {list(range(1, n+1))}")
-    log(f"Кількість ребер: {len(edges)}")
-    log(f"Ребра: {edges}")
-
-    # степені та околиці
-    log("\nОколиці вершин:")
-    for i in range(n):
-        neigh = [j+1 for j in range(n) if matrix[i][j] != 0]
-        degree = len(neigh)
-        log(f"Вершина {i+1}: околиця = {neigh}, степінь = {degree}")
-
-    # ейлерів цикл (для неорієнтованого графа)
-    if not directed:
-        all_even = all(sum(row) % 2 == 0 for row in matrix)
-        if all_even:
-            log("\nЕйлерів цикл існує ✅")
-        else:
-            log("\nЕйлерового циклу немає ❌")
-
-    # гамільтонів цикл
-    def has_hamiltonian_cycle():
-        for perm in itertools.permutations(range(n)):
-            valid = True
-            for i in range(n):
-                a, b = perm[i], perm[(i+1) % n]
-                if matrix[a][b] == 0:
-                    valid = False
-                    break
-            if valid:
-                return [p+1 for p in perm] + [perm[0]+1]
-        return None
-
-    hc = has_hamiltonian_cycle()
-    if hc:
-        log("Гамільтонів цикл знайдено: " + str(hc))
-    else:
-        log("Гамільтонового циклу не знайдено.")
-
-    # пошук простих циклів (до 4 вершин)
-    log("\nЦикли (до 4 вершин):")
-    cycles = set()
-    for a, b, c in itertools.permutations(range(n), 3):
-        if matrix[a][b] and matrix[b][c] and matrix[c][a]:
-            cycles.add(tuple(sorted([a+1,b+1,c+1])))
-    for cyc in list(cycles)[:5]:
-        log(str(cyc))
-    log("="*60)
-
-
-# PyQt5 application launcher
 if __name__ == "__main__":
     import sys
     app = QApplication(sys.argv)
