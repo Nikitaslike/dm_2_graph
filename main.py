@@ -97,7 +97,7 @@ def analyze_graph(matrix, directed=False, log=print):
     log(f"Ребра: {edges}")
     for i in range(n):
         neigh = [j+1 for j in range(n) if matrix[i][j]]
-        log(f"Вершина {i+1}: околиця={neigh}, степінь={len(neigh)}")
+        log(f"Вершина {i+1}: N(v)={neigh}, d()={len(neigh)}")
 
     even = all(sum(row)%2==0 for row in matrix)
     log("Ейлерів цикл існує ✅" if even else "Ейлерового циклу немає ❌")
@@ -146,7 +146,7 @@ class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Контрольна робота: Графи (Варіант 14)")
-        self.setWindowIcon(QIcon())
+        self.setWindowIcon(QIcon("math-icon.png"))
         self.resize(950, 600)
         self.setup_ui()
 
@@ -157,13 +157,16 @@ class MainWindow(QWidget):
         layout.addWidget(self.text)
 
         self.text.append("Кр з дискретної математики")
-        self.text.append("Тема: Графи\nВаріант №14")
-        self.text.append("Студент: Мірошниченко Нікіта, 24ПР1")
+        self.text.append("Тема: Графи\nВаріант №14*")
+        self.text.append("Студент: Мірошниченко Нікіта, 24ПР1")        
+        self.text.append("Модифікований*: для завдання №2 використовується графи з завдання №1, а №3 - з №4 код а.\n")
 
         btns = QHBoxLayout()
         for name, func in [
             ("№1 Граф а", self.show_a),
             ("№1 Граф б", self.show_b),
+            ("№2 Матриці, шляхи, цикли", self.show_2),
+            ("№3 Код Прюфера", self.show_3),
             ("№4 Коди Прюфера", self.show_prufer),
             ("Теорія", self.show_theory)
         ]:
@@ -209,6 +212,75 @@ class MainWindow(QWidget):
     def show_theory(self):
         self.text.clear()
         self.text.setPlainText(theory_text)
+
+    def show_2(self):
+        self.text.clear()
+        self.log("=== №2 Матриці, шляхи, цикли ===")
+
+        # --- Граф A ---
+        self.log("\n--- Граф A ---")
+        self.log("\nМатриця суміжності:")
+        for row in matrix_a:
+            self.log(str(row))
+        self.log("\nМатриця інцидентності:")
+        edges_a = [(i+1,j+1) for i in range(len(matrix_a)) for j in range(len(matrix_a)) if matrix_a[i][j] and j>i]
+        inc_a = [[0]*len(edges_a) for _ in range(len(matrix_a))]
+        for k,(u,v) in enumerate(edges_a):
+            inc_a[u-1][k] = 1
+            inc_a[v-1][k] = 1
+        for row in inc_a:
+            self.log(str(row))
+        self.log("\nПриклади шляхів, ланцюгів і циклів:")
+        examples_a = [
+            "Шлях: 1–2–4–7",
+            "Шлях: 2–5–9",
+            "Ланцюг: 3–5–6–8",
+            "Цикл: 1–4–7–1",
+            "Цикл: 2–4–8–5–2"
+        ]
+        for ex in examples_a:
+            self.log(ex)
+        analyze_graph(matrix_a, False, log=self.log)
+        draw_graph(matrix_a, False)
+
+        # --- Граф B ---
+        self.log("\n--- Граф B ---")
+        self.log("\nМатриця суміжності:")
+        for row in matrix_b:
+            self.log(str(row))
+        self.log("\nМатриця інцидентності:")
+        edges_b = [(i+1,j+1) for i in range(len(matrix_b)) for j in range(len(matrix_b)) if matrix_b[i][j] and j>i]
+        inc_b = [[0]*len(edges_b) for _ in range(len(matrix_b))]
+        for k,(u,v) in enumerate(edges_b):
+            inc_b[u-1][k] = 1
+            inc_b[v-1][k] = 1
+        for row in inc_b:
+            self.log(str(row))
+        self.log("\nПриклади шляхів, ланцюгів і циклів:")
+        examples_b = [
+            "Шлях: 1–3–9",
+            "Шлях: 2–7–4",
+            "Ланцюг: 5–6–8–10",
+            "Цикл: 2–4–7–2",
+            "Цикл: 1–7–2–1"
+        ]
+        for ex in examples_b:
+            self.log(ex)
+        analyze_graph(matrix_b, True, log=self.log)
+        draw_graph(matrix_b, True)
+
+    def show_3(self):
+        self.text.clear()
+        self.log("=== №3 Код Прюфера ===")
+        edges = prufer_decode(code_a)
+        self.log(f"Використовується дерево з коду a: {code_a}")
+        self.log(f"Ребра дерева: {edges}")
+        G = nx.Graph()
+        G.add_edges_from(edges)
+        plt.figure(figsize=(4,4), num="Дерево №3 (код Прюфера a)")
+        nx.draw(G, with_labels=True, node_color="#b3ffb3", node_size=700, edgecolors="black")
+        plt.title("Дерево №3 (код Прюфера a)")
+        plt.show()
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     w = MainWindow()
